@@ -13,13 +13,15 @@ size_t mark_obj(struct tgc_config *gc, struct tgc_node *obj)
 	obj->next_list = 0;
 
 	while ((node = list)) {
-		/* mark node */
-		node->color = gc->current_color;
 		/* remove node from list */
 		list = node->next_list;
-		/* add neighbours to list */
-		gc->walk_obj(node, &list);
-		++rc;
+		if (node->color != gc->current_color) {
+			/* mark node */
+			node->color = gc->current_color;
+			/* add neighbours to list */
+			gc->walk_obj(node, &list);
+			++rc;
+		}
 	}
 	return rc;
 }
