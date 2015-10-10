@@ -11,13 +11,11 @@ size_t tgc_collect(struct tgc_config *gc)
 	/* swap value for black */
 	gc->black ^= 1;
 
-	/* add objects in root set to candidates */
-	gc->walk_root_set(gc, &queue);
-
 	/* mark */
+	gc->walk_root_set(gc, &queue);
 	while ((obj = queue)) {
 		queue = queue->next_list;
-		/* add neighbours to queue */
+		/* mark neighbours */
 		gc->walk_obj(obj, &queue, gc->black);
 		++rc;
 	}
