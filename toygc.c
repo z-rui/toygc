@@ -1,34 +1,9 @@
 #include "toygc.h"
 
-static
-size_t mark_obj(struct tgc_config *gc, struct tgc_node *obj)
-{
-	struct tgc_node *node;
-	struct tgc_node *list;
-	size_t rc = 0;
-
-	/* depth first search */
-
-	list = obj;
-	obj->next_list = 0;
-
-	while ((node = list)) {
-		/* remove node from list */
-		list = node->next_list;
-		if (node->color != gc->current_color) {
-			/* mark node */
-			node->color = gc->current_color;
-			/* add neighbours to list */
-			gc->walk_obj(node, &list);
-			++rc;
-		}
-	}
-	return rc;
-}
-
-size_t tgc_collect(struct tgc_config *gc, void *rs_state)
+size_t tgc_collect(struct tgc_config *gc)
 {
 	struct tgc_node *obj, **link;
+	struct tgc_node *candidates = 0;
 	size_t rc = 0;
 
 	/* stop the world collecter */
@@ -36,10 +11,21 @@ size_t tgc_collect(struct tgc_config *gc, void *rs_state)
 	/* swap color */
 	gc->current_color ^= 1;
 
-	/* mark live objects */
-	while ((obj = gc->walk_root_set(&rs_state))) {
-		rc += mark_obj(gc, obj);
+	/* add objects in root set to candidates */
+	gc->walk_root_set(gc, &candidates);
+
+	/* mark */
+	while ((obj = candidates)) {
+		candidates = candidates->next_list;
+		if (obj->color != gc->current_color) {
+			/* mark node */
+			obj->color = gc->current_color;
+			/* add neighbours to candidates */
+			gc->walk_obj(obj, &candidates);
+			++rc;
+		}
 	}
+
 	/* sweep */
 	for (link = &gc->obj_set; (obj = *link); ) {
 		if (obj->color != gc->current_color) {
