@@ -13,7 +13,7 @@ struct tgc_config {
 	void (*walk_obj)(struct tgc_node *, struct tgc_node **, int);
 	void (*walk_root_set)(struct tgc_config *, struct tgc_node **);
 	struct tgc_node *obj_set;
-	int current_color;
+	int black;
 };
 
 extern size_t tgc_collect(struct tgc_config *);

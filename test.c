@@ -61,7 +61,7 @@ void walk_root_set(struct tgc_config *gc, struct tgc_node **list)
 
 	rs = container_of(gc, struct ll_root_set, gc);
 	if (rs->root) {
-		tgc_add_list(&rs->root->gc, list, gc->current_color);
+		tgc_add_list(&rs->root->gc, list, gc->black);
 	}
 }
 
