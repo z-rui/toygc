@@ -17,13 +17,9 @@ size_t tgc_collect(struct tgc_config *gc)
 	/* mark */
 	while ((obj = candidates)) {
 		candidates = candidates->next_list;
-		if (obj->color != gc->current_color) {
-			/* mark node */
-			obj->color = gc->current_color;
-			/* add neighbours to candidates */
-			gc->walk_obj(obj, &candidates);
-			++rc;
-		}
+		/* add neighbours to candidates */
+		gc->walk_obj(obj, &candidates, gc->current_color);
+		++rc;
 	}
 
 	/* sweep */
@@ -45,4 +41,11 @@ void tgc_add(struct tgc_config *gc, struct tgc_node *obj)
 	obj->color = gc->current_color;
 	obj->next = gc->obj_set;
 	gc->obj_set = obj;
+}
+
+void tgc_add_list(struct tgc_node *obj, struct tgc_node **list, int color)
+{
+	obj->color = color;
+	obj->next_list = *list;
+	*list = obj;
 }

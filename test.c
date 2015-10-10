@@ -42,16 +42,15 @@ void finalize(struct tgc_node *obj)
 }
 
 static
-void walk_obj(struct tgc_node *obj, struct tgc_node **list)
+void walk_obj(struct tgc_node *obj, struct tgc_node **list, int black)
 {
 	struct ll_node *ll, *next;
 
 	ll = container_of(obj, struct ll_node, gc);
 	next = ll->next;
 
-	if (next) {
-		next->gc.next_list = *list;
-		*list = &next->gc;
+	if (next && next->gc.color != black) {
+		tgc_add_list(&next->gc, list, black);
 	}
 }
 
@@ -62,8 +61,7 @@ void walk_root_set(struct tgc_config *gc, struct tgc_node **list)
 
 	rs = container_of(gc, struct ll_root_set, gc);
 	if (rs->root) {
-		rs->root->gc.next_list = *list;
-		*list = &rs->root->gc;
+		tgc_add_list(&rs->root->gc, list, gc->current_color);
 	}
 }
 
@@ -83,8 +81,10 @@ static
 void dump(struct ll_root_set *rs)
 {
 	struct ll_node *node;
+	int first = 1;
 
-	for (node = rs->root; node; node = node->next) {
+	for (node = rs->root; first || node != rs->root; node = node->next) {
+		first = 0;
 		printf("%d\n", node->value);
 	}
 }
@@ -99,21 +99,24 @@ void generate_list(struct ll_root_set *rs, size_t n)
 	node = rs->root = new_node(&rs->gc, 0);
 	for (i = 1; i < n; i++)
 		node = node->next = new_node(&rs->gc, i);
+	node->next = rs->root; /* circular list */
 }
 
 static
 void truncate_list(struct ll_root_set *rs)
 {
 	struct ll_node **tortoise, *hare;
+	int first = 1;
 
 	hare = rs->root;
 	tortoise = &rs->root;
 
-	while (hare && hare->next) {
+	while ((first || hare != rs->root) && hare->next != rs->root) {
+		first = 0;
 		hare = hare->next->next;
 		tortoise = &(*tortoise)->next;
 	}
-	*tortoise = 0;
+	*tortoise = rs->root;
 }
 
 #define N 1000000
@@ -134,7 +137,10 @@ int main()
 		live = tgc_collect(&rs.gc);
 		printf("live objects: %u\n", (unsigned) live);
 		truncate_list(&rs);
-	} while (live);
+	} while (live > 1);
+
+	rs.root = 0;
+	tgc_collect(&rs.gc);
 
 	printf("%d allocs\n%d frees\n", alloc_calls, free_calls);
 	return 0;
