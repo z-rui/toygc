@@ -14,6 +14,7 @@ struct ll_node {
 };
 
 struct ll_root_set {
+	struct tgc_config gc;
 	struct ll_node *root;
 };
 
@@ -41,16 +42,15 @@ void walk_obj(struct tgc_node *obj, struct tgc_node **list)
 }
 
 static
-struct tgc_node *walk_root_set(void **rs_state)
+void walk_root_set(struct tgc_config *gc, struct tgc_node **list)
 {
 	struct ll_root_set *rs;
 
-	rs = (struct ll_root_set *) *rs_state;
-	if (rs && rs->root) {
-		*rs_state = 0;
-		return &rs->root->gc;
+	rs = container_of(gc, struct ll_root_set, gc);
+	if (rs->root) {
+		rs->root->gc.next_list = *list;
+		*list = &rs->root->gc;
 	}
-	return 0;
 }
 
 static
@@ -76,15 +76,15 @@ void dump(struct ll_root_set *rs)
 }
 
 static
-void generate_list(struct ll_root_set *rs, struct tgc_config *gc, size_t n)
+void generate_list(struct ll_root_set *rs, size_t n)
 {
 	struct ll_node *node;
 	int i;
 
 	/* assume n > 0 */
-	node = rs->root = new_node(gc, 0);
+	node = rs->root = new_node(&rs->gc, 0);
 	for (i = 1; i < n; i++)
-		node = node->next = new_node(gc, i);
+		node = node->next = new_node(&rs->gc, i);
 }
 
 static
@@ -106,15 +106,18 @@ void truncate_list(struct ll_root_set *rs)
 
 int main()
 {
-	struct tgc_config gc = {finalize, walk_obj, walk_root_set};
-	struct ll_root_set rs;
-	size_t live;
+	struct ll_root_set rs = {
+		{finalize, walk_obj, walk_root_set}
+	};
+	int live;
 
-	generate_list(&rs, &gc, N);
+	generate_list(&rs, N);
 
 	do {
-		/*dump(&rs);*/
-		live = tgc_collect(&gc, &rs);
+#if N <= 10
+		dump(&rs);
+#endif
+		live = tgc_collect(&rs.gc);
 		printf("live objects: %u\n", (unsigned) live);
 		truncate_list(&rs);
 	} while (live);
