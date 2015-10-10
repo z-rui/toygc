@@ -7,6 +7,20 @@
 # define container_of(x, t, f) (t *) ((char *) (x) - offsetof(t, f))
 #endif
 
+int alloc_calls, free_calls;
+
+static void *my_alloc(size_t size)
+{
+	++alloc_calls;
+	return malloc(size);
+}
+
+static void my_free(void *mem)
+{
+	++free_calls;
+	free(mem);
+}
+
 struct ll_node {
 	int value;
 	struct ll_node *next;
@@ -24,7 +38,7 @@ void finalize(struct tgc_node *obj)
 	struct ll_node *ll;
 
 	ll = container_of(obj, struct ll_node, gc);
-	free(ll);
+	my_free(ll);
 }
 
 static
@@ -58,7 +72,7 @@ struct ll_node *new_node(struct tgc_config *gc, int value)
 {
 	struct ll_node *ll;
 
-	ll = (struct ll_node *) malloc(sizeof (struct ll_node));
+	ll = (struct ll_node *) my_alloc(sizeof (struct ll_node));
 	ll->value = value;
 	ll->next = 0;
 	tgc_add(gc, &ll->gc);
@@ -122,5 +136,6 @@ int main()
 		truncate_list(&rs);
 	} while (live);
 
+	printf("%d allocs\n%d frees\n", alloc_calls, free_calls);
 	return 0;
 }

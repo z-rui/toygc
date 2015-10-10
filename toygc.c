@@ -14,10 +14,11 @@ size_t tgc_collect(struct tgc_config *gc)
 
 	/* add objects in root set to candidates */
 	gc->walk_root_set(gc, &candidates);
-	/* depth first search */
+
+	/* mark */
 	while ((obj = candidates)) {
 		candidates = candidates->next_list;
-		if (obj->color  == WHITE) {
+		if (obj->color == WHITE) {
 			/* mark node as black */
 			obj->color = BLACK;
 			/* add neighbours to candidates */
@@ -25,6 +26,7 @@ size_t tgc_collect(struct tgc_config *gc)
 			++rc;
 		}
 	}
+
 	/* sweep */
 	for (link = &gc->obj_set; (obj = *link); ) {
 		if (obj->color == WHITE) {
